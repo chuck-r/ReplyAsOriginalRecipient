@@ -3,9 +3,6 @@
 'use strict';
 const verbose = 0;
 
-// TODOS:
-// - skip cc conversion when replying to email from 'Sent' directory
-//   (no available tb api allows this, as of v91)
 
 const on_compose_start = async (tab, win)=>{
     // HACK: in some scenarios (draft, mailto, auto-bcc), calling
@@ -19,6 +16,7 @@ const on_compose_start = async (tab, win)=>{
         win: {id: win.id, type: win.type},
         details: msg,
     }));
+		
     // recipients are not always available right away, so need to wait
     if (!is_new(msg))
     {
@@ -30,21 +28,32 @@ const on_compose_start = async (tab, win)=>{
         }
         log.info('final details', json2(msg));
     }
-    // REPLY ALL AS CC BEHAVIOR
-    if (is_reply(msg) && msg.to.length>1)
+    
+    if (is_reply(msg))
     {
-        await tb.compose.setComposeDetails(tab.id, {
-            to: [msg.to[0]],
-            cc: [...msg.to.slice(1), ...msg.cc],
-        });
-        msg = await tb.compose.getComposeDetails(tab.id);
+			let oriMsg = await tb.messages.getFull(msg.relatedMessageId);
+			let originalTo;
+			if (oriMsg) {
+				log.info('orimessage',json2({headers:oriMsg.headers}));
+				originalTo = oriMsg.headers['x-original-to'][0];
+			}
+			let identityName = splitAddr(msg.from);
+			if (!originalTo) {
+				if (oriMsg.headers['to'].length==1) {
+					originalTo = oriMsg.headers['to'][0];
+				}
+			}
+			
+			if (originalTo) {
+				let splitted = 	splitAddr(originalTo);
+				if (splitted[0]) identityName[0]=splitted[0];
+				if (splitted[1]) identityName[1]=splitted[1];
+			}
+			originalTo = identityName[0]+' <'+identityName[1]+'>';
+			await tb.compose.setComposeDetails(tab.id, {from: originalTo});
+      msg = await tb.compose.getComposeDetails(tab.id);
     }
-    // ALWAYS SHOW CC BEHAVIOR
-    if (!msg.cc.length)
-    {
-        /*no await*/ tb.compose.setComposeDetails(tab.id, {cc: ['x']});
-        await tb.compose.setComposeDetails(tab.id, {cc: []});
-    }
+		
     // HACK: editing CC causes focus to move to CC field, which is not useful.
     // Least bad solution is to fix focus manually to body/to.
     for (let delay of [0, 1, 10, 10])
@@ -84,6 +93,24 @@ const is_new = msg=>{
         return msg.type=='new';
     return !msg.subject;
 }
+
+const splitAddr = addr=> {
+	var lIoLower = addr.lastIndexOf('<');
+	var lIoGreater = addr.lastIndexOf('>');
+
+	var fullName,emailAddr;
+	if (lIoLower==-1) {
+		if (addr.lastIndexOf('@')!=-1) { 
+			emailAddr = addr.trim();
+		}
+	} else if (lIoLower<lIoGreater) {
+		emailAddr = addr.substring(lIoLower+1,lIoGreater);
+		fullName = addr.substring(0,lIoLower).trim();
+	}
+
+	return [fullName,emailAddr];
+}
+
 
 tb.tabs.onCreated.addListener(tab=>{
     log.trace('tabs.onCreated', tab);
