@@ -35,7 +35,7 @@ const on_compose_start = async (tab, win)=>{
 			let originalTo;
 			if (oriMsg) {
 				log.info('orimessage',json2({headers:oriMsg.headers}));
-				originalTo = oriMsg.headers['x-original-to'][0];
+				originalTo = oriMsg.headers['x-original-to']?oriMsg.headers['x-original-to'][0]:null;
 			}
 			let identityName = splitAddr(msg.from);
 			if (!originalTo) {
