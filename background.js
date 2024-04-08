@@ -224,3 +224,5 @@ log.debug = log.bind(log, {cfn: 'debug', verbose: 2});
 log.trace = log.bind(log, {cfn: 'debug', verbose: 3});
 
 })(messenger);
+
+/* vim: set sta si et sw=4 sts=4 ts=4: */
