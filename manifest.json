@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "ReplyAsOriginalRecipientUp",
-    "version": "1.1.0a",
+    "version": "1.1.0-alpha",
     "description": "Set your customized address in From: field when replying to an email",
     "applications": {"gecko": {
         "id": "ReplyAsOriginalRecipient@github.com",
