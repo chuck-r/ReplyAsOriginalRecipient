@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 (function(tb){
 'use strict';
-const verbose = 0;
+const verbose = 1;
 
 
 const on_compose_start = async (tab, win)=>{
@@ -29,6 +29,8 @@ const on_compose_start = async (tab, win)=>{
         log.info('final details', json2(msg));
     }
 
+    let identities = await tb.identities.list();
+
     if (is_reply(msg))
     {
         let oriMsg = await tb.messages.getFull(msg.relatedMessageId);
@@ -41,18 +43,71 @@ const on_compose_start = async (tab, win)=>{
         if (!originalTo) {
             if (oriMsg.headers['to'].length==1) {
                 let split_recipients = oriMsg.headers['to'][0].split(", ");
-                if (split_recipients.length > 1) {
-                    let addr;
-                    for (addr in split_recipients) {
-                        if (splitAddr(split_recipients[addr])[1] !=
-                            splitAddr(oriMsg.headers['from'][0])[1]) {
-                            originalTo = split_recipients[addr];
+                let addr;
+                for (addr in split_recipients) {
+                    let rcpt = split_recipients[addr];
+                    let match_address = splitAddr(rcpt)[1];
+                    if (splitAddr(rcpt)[1] == splitAddr(oriMsg.headers['from'][0])[1])
+                        continue;
+
+                    let unplussed_addr = splitAddr(rcpt)[1];
+
+                    let delims = [ "+", "-", "@" ];
+                    let delim;
+                    for (delim in delims) {
+                        let obj = delims[delim];
+                        if (unplussed_addr.indexOf(obj) < unplussed_addr.lastIndexOf("@")) {
+                            unplussed_addr = rcpt.substr(0,rcpt.indexOf(obj));
+                            unplussed_addr += rcpt.substr(rcpt.lastIndexOf("@"));
+                        }
+                        if (unplussed_addr != match_address)
+                            break;
+                    }
+                    if (unplussed_addr != match_address) {
+                        let id
+                        for (id in identities) {
+                            if (identities[id]["email"] == unplussed_addr) {
+                                originalTo = identities[id]["name"] + " <" + match_address + ">";
                                 break;
+                            }
                         }
                     }
+
+                    if (!originalTo)
+                    {
+                        let match_domain = match_address.substr(match_address.lastIndexOf("@")+1);
+                        let matched_identities = [];
+
+                        let id;
+                        for (id in identities) {
+                            let id_email = identities[id]["email"];
+
+                            if (id_email.substr(id_email.indexOf("@")+1) != match_domain)
+                                continue;
+
+                            let test_recipients = split_recipients;
+                            let to;
+                            for (to in test_recipients) {
+                                let test_rcpt = test_recipients[to];
+                                if (test_rcpt == match_address)
+                                    continue;
+                                test_recipients[to] = splitAddr(test_rcpt)[1];
+                            }
+                            let same_domain = [];
+                            for (to in test_recipients) {
+                                let test_rcpt = test_recipients[to];
+                                if (test_rcpt.substr(test_rcpt.indexOf("@")+1) == match_domain)
+                                    same_domain.push(test_rcpt);
+                            }
+                            if (same_domain.length == 1) {
+                                matched_identities.push(identities[id]);
+                                break;
+                            }
+                        }
+                        if (matched_identities.length == 1)
+                            originalTo = matched_identities[0]["name"] + " <" + match_address + ">";
+                    }
                 }
-                if (!originalTo)
-                    originalTo = oriMsg.headers['to'][0];
             }
         }
 
