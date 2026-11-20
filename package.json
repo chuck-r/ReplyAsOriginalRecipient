@@ -1,0 +1,14 @@
+{
+	"name": "replyasoriginalrecipient",
+	"version": "1.3.0",
+	"license": "GPL-3.0-only",
+	"author": "",
+	"type": "module",
+	"main": "index.js",
+	"scripts": {
+		"build": "vite build"
+	},
+	"dependencies": {
+		"vite": "^8.3.8"
+	}
+}

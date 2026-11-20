@@ -8,3 +8,5 @@ When you reply to an email addressed to your email address with
 extension, the From: field is replaced by this same address.
 
 Replace old (and not compatible) ReplyAsOriginalRecipient extension made by Qiqitori.
+
+Updated and typed version from ReplyAsOriginalRecipient made by chuck-r.
